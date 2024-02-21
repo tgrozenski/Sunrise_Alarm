@@ -64,18 +64,18 @@ public class MainActivity extends AppCompatActivity {
         //check permissions
         ActivityResultLauncher<String[]> locationPermissionRequest =
                 registerForActivityResult(new ActivityResultContracts
-                                .RequestMultiplePermissions(), result -> {
-                            Boolean fineLocationGranted = result.getOrDefault(
-                                    Manifest.permission.ACCESS_FINE_LOCATION, false);
-                            Boolean coarseLocationGranted = result.getOrDefault(
-                                    Manifest.permission.ACCESS_COARSE_LOCATION,false);
-                            if (fineLocationGranted != null && fineLocationGranted) {
-                                Log.d("LOCATION", "Precise location access granted");
-                            } else if (coarseLocationGranted != null && coarseLocationGranted) {
-                                Log.d("LOCATION", "Approximate location access granted");                            }
-                            else {
-                                Log.d("LOCATION", "No Location access granted");
-                            }
+                        .RequestMultiplePermissions(), result -> {
+                    Boolean fineLocationGranted = result.getOrDefault(
+                            Manifest.permission.ACCESS_FINE_LOCATION, false);
+                    Boolean coarseLocationGranted = result.getOrDefault(
+                            Manifest.permission.ACCESS_COARSE_LOCATION,false);
+                    if (fineLocationGranted != null && fineLocationGranted) {
+                        Log.d("LOCATION", "Precise location access granted");
+                    } else if (coarseLocationGranted != null && coarseLocationGranted) {
+                        Log.d("LOCATION", "Approximate location access granted");                            }
+                    else {
+                        Log.d("LOCATION", "No Location access granted");
+                    }
                         }
                 );
         locationPermissionRequest.launch(new String[] {
