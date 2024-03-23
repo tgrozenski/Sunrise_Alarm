@@ -45,6 +45,7 @@ public class AlarmBroadcastReceiver extends BroadcastReceiver {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     if (alarmmanager.canScheduleExactAlarms()) {
                         alarmmanager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, unix, pendingintent);
+                        Log.d("ALARM", "Alarm Has been Scheduled for: " + unix);
                     }
                     else {
                         Log.d("ERROR", "App does not have permission to schedule exact alarms");

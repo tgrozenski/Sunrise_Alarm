@@ -30,10 +30,11 @@ public class NotificationService extends Service {
         String description = "This is an alarm channel";
         int importance = NotificationManager.IMPORTANCE_HIGH;
         String CHANNEL_ID = "DefaultId";
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, CHANNEL_ID, importance);
-            channel.setDescription(description);
-        }
+        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, CHANNEL_ID, importance);
+        channel.setDescription(description);
+        NotificationManager notificationManager = getSystemService(NotificationManager.class);
+        notificationManager.createNotificationChannel(channel);
+
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_NOTIFICATION_POLICY) != PackageManager.PERMISSION_GRANTED) {
             Log.d("ERROR", "Permission not granted");
         }

@@ -27,36 +27,47 @@ public class AlarmService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        mediaplayer = MediaPlayer.create(this, R.raw.rooster_sound);
+        mediaplayer = MediaPlayer.create(this, R.raw.queen_sound);
         mediaplayer.setLooping(true);
         mediaplayer.start();
         Log.d("MEDIA", "Alarm should be ringing now!");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            vibrator = (VibratorManager) getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
-            vibrator.getDefaultVibrator();
-        } else {
-            //Do it the other way
-            //vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE);
 
+        vibrator = (VibratorManager) getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+        //Do it the other way
+        vibrator.vibrate(CombinedVibration.createParallel(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)));
+        vibrator.getDefaultVibrator();
+
+        if (NotificationManagerCompat.from(this).areNotificationsEnabled()) {
+            Log.d("CATS", "Notifs are enabled");
+        } else {
+            Log.d("CATS", "Notifs are not enabled");
         }
+
+        notify_user();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 
+      notify_user();
+
+        return START_STICKY;
+    }
+
+    public void notify_user() {
+
         //set intent for alarm screen from notification
         Intent intent1 = new Intent(getApplicationContext(), AlarmScreen.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        intent1.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent1, PendingIntent.FLAG_IMMUTABLE);
 
         //build Channel
         String description = "This is an alarm channel";
         int importance = NotificationManager.IMPORTANCE_HIGH;
         String CHANNEL_ID = "DefaultId";
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, CHANNEL_ID, importance);
-            channel.setDescription(description);
-        }
+        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, CHANNEL_ID, importance);
+        channel.setDescription(description);
+
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             Log.d("ERROR", "Permission not granted");
         }
@@ -71,10 +82,8 @@ public class AlarmService extends Service {
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true);
 
-        //notify
-        NotificationManagerCompat.from(this).notify(1, builder.build());
 
-        return START_STICKY;
+        NotificationManagerCompat.from(this).notify(1, builder.build());
     }
 
     @Override
@@ -82,12 +91,9 @@ public class AlarmService extends Service {
         super.onDestroy();
 
         mediaplayer.stop();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            vibrator.cancel();
-        }
-        else {
-            //do the other way
-        }
+        vibrator.cancel();
+
+
     }
     @Nullable
     @Override

@@ -1,8 +1,12 @@
 package com.example.myapplication;
 
-import static android.content.Intent.FLAG_ACTIVITY_MULTIPLE_TASK;
+
+import static android.view.View.GONE;
+import static android.view.View.VISIBLE;
 
 import android.Manifest;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -45,196 +49,160 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        //build Channel
+        String description = "This is an alarm channel";
+        int importance = NotificationManager.IMPORTANCE_HIGH;
+        String CHANNEL_ID = "DefaultId";
+        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, CHANNEL_ID, importance);
+        channel.setDescription(description);
+        NotificationManager notificationManager = getSystemService(NotificationManager.class);
+        notificationManager.createNotificationChannel(channel);
+
         //Get permission for notification
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
-
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
-            Log.d("PERMISSIONS", "permissions should be requested!");
-            return;
+
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
+                Log.d("PERMISSIONS", "permissions should be requested!");
+                return;
+            }
+            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+                Log.d("PERMISSIONS", "permissions should be requested!");
+            }
         }
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-            Log.d("PERMISSIONS", "permissions should be requested!");
+        else {
+            Log.d("NOTIFICATIONS", "SDK is lower than 33 so apps do not need to request permssions for notification services");
+
         }
 
-        //check permissions
-        ActivityResultLauncher<String[]> locationPermissionRequest =
-                registerForActivityResult(new ActivityResultContracts
-                        .RequestMultiplePermissions(), result -> {
-                    Boolean fineLocationGranted = result.getOrDefault(
-                            Manifest.permission.ACCESS_FINE_LOCATION, false);
-                    Boolean coarseLocationGranted = result.getOrDefault(
-                            Manifest.permission.ACCESS_COARSE_LOCATION,false);
-                    if (fineLocationGranted != null && fineLocationGranted) {
-                        Log.d("LOCATION", "Precise location access granted");
-                    } else if (coarseLocationGranted != null && coarseLocationGranted) {
-                        Log.d("LOCATION", "Approximate location access granted");                            }
-                    else {
-                        Log.d("LOCATION", "No Location access granted");
-                    }
-                        }
-                );
-        locationPermissionRequest.launch(new String[] {
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-        });
-        get_location();
+            //check permissions
+            ActivityResultLauncher<String[]> locationPermissionRequest =
+                    registerForActivityResult(new ActivityResultContracts
+                                    .RequestMultiplePermissions(), result -> {
+                                Boolean fineLocationGranted = result.getOrDefault(
+                                        Manifest.permission.ACCESS_FINE_LOCATION, false);
+                                Boolean coarseLocationGranted = result.getOrDefault(
+                                        Manifest.permission.ACCESS_COARSE_LOCATION, false);
+                                if (fineLocationGranted != null && fineLocationGranted) {
+                                    Log.d("LOCATION", "Precise location access granted");
+                                } else if (coarseLocationGranted != null && coarseLocationGranted) {
+                                    Log.d("LOCATION", "Approximate location access granted");
+                                } else {
+                                    Log.d("LOCATION", "No Location access granted");
+                                }
+                            }
+                    );
+            locationPermissionRequest.launch(new String[]{
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+            });
+            get_location();
 
-        //Timepickers
-        NumberPicker before_picker = findViewById(R.id.before_selector);
-        before_picker.setMinValue(0);
-        before_picker.setMaxValue(30);
+            //Timepickers
+            NumberPicker before_picker = findViewById(R.id.before_selector);
+            before_picker.setMinValue(0);
+            before_picker.setMaxValue(30);
 
-        NumberPicker after_picker = findViewById(R.id.after_selector);
-        after_picker.setMinValue(0);
-        after_picker.setMaxValue(30);
+            NumberPicker after_picker = findViewById(R.id.after_selector);
+            after_picker.setMinValue(0);
+            after_picker.setMaxValue(30);
 
-        //apply and reset buttons
-        Button apply = findViewById(R.id.apply_button);
-        TextView alarm_time = findViewById(R.id.alarm_time);
+            //apply and reset buttons
+            Button apply = findViewById(R.id.apply_button);
+            TextView alarm_time = findViewById(R.id.alarm_time);
+            Button reset = findViewById(R.id.reset_button);
 
-        apply.setOnClickListener(view -> {
-            get_numberpicker();
-            String text;
-            if (alarm_minute >= 10) {
-                text = alarm_hour + ":" + alarm_minute;
+            apply.setOnClickListener(view -> {
+                get_numberpicker();
+                String text;
+                if (alarm_minute >= 10) {
+                    text = alarm_hour + ":" + alarm_minute;
+                } else {
+                    text = alarm_hour + ":" + "0" + alarm_minute;
                 }
-            else {
-                text = alarm_hour + ":" + "0" + alarm_minute;
-                }
-            alarm_time.setText(text);
-            Log.d("BUTTON", "Applied" + alarm_hour + ":" + alarm_minute);
-            unix = time_to_mili(alarm_hour, alarm_minute) + System.currentTimeMillis();
-            Log.d("TIME", "unix: " + unix);
+                alarm_time.setText(text);
+                Log.d("BUTTON", "Applied" + alarm_hour + ":" + alarm_minute);
+                unix = time_to_mili(alarm_hour, alarm_minute) + System.currentTimeMillis();
+                Log.d("TIME", "unix: " + unix);
 
-            if (alarm_state) {
-                Toast.makeText(MainActivity.this, "Alarm set for: " + text, Toast.LENGTH_LONG).show();
-                //send broadcast
+                if (alarm_state) {
+                    Toast.makeText(MainActivity.this, "Alarm set for: " + text, Toast.LENGTH_LONG).show();
+                    //send broadcast
+                    Intent broadcast = new Intent(MainActivity.this, AlarmBroadcastReceiver.class);
+                    broadcast.putExtra("unix", unix);
+                    broadcast.putExtra("alarm_state", alarm_state);
+                    sendBroadcast(broadcast);
+                }
+                reset.setVisibility(VISIBLE);
+                apply.setVisibility(GONE);
+            });
+
+            reset.setOnClickListener(view -> {
+                alarm_time.setText("0:00");
+                alarm_minute = minute;
+                alarm_hour = hour;
+                unix = time_to_mili(alarm_hour, alarm_minute) + System.currentTimeMillis();
                 Intent broadcast = new Intent(MainActivity.this, AlarmBroadcastReceiver.class);
                 broadcast.putExtra("unix", unix);
                 broadcast.putExtra("alarm_state", alarm_state);
                 sendBroadcast(broadcast);
+                Log.d("TIME", "Unix: " + unix);
+                apply.setVisibility(VISIBLE);
+                reset.setVisibility(GONE);
+            });
+
+
+            //get location
+            Button location_button = findViewById(R.id.location_button);
+            location_button.setOnClickListener(view -> get_location());
+
+            //get alarm_state
+            androidx.appcompat.widget.SwitchCompat on_off = findViewById(R.id.switch1);
+            on_off.setOnClickListener(view -> {
+                Intent broadcast = new Intent(MainActivity.this, AlarmBroadcastReceiver.class);
+                if (on_off.isChecked()) {
+                    Toast.makeText(MainActivity.this, "Alarm is enabled for " + alarm_hour + ":" + alarm_minute, Toast.LENGTH_LONG).show();
+                    alarm_state = true;
+                    broadcast.putExtra("alarm_state", alarm_state);
+                    broadcast.putExtra("unix", unix);
+                } else {
+                    Toast.makeText(MainActivity.this, "Alarm cancelled for " + alarm_hour + ":" + alarm_minute, Toast.LENGTH_LONG).show();
+                    alarm_state = false;
+                    broadcast.putExtra("alarm_state", alarm_state);
+                    broadcast.putExtra("unix", unix);
                 }
+                sendBroadcast(broadcast);
+            });
 
-        });
-
-        Button reset = findViewById(R.id.reset_button);
-        reset.setOnClickListener(view -> {
-            alarm_time.setText("0:00");
-            alarm_minute = minute;
-            alarm_hour = hour;
-            unix = time_to_mili(alarm_hour, alarm_minute) + System.currentTimeMillis();
-            Intent broadcast = new Intent(MainActivity.this, AlarmBroadcastReceiver.class);
-            broadcast.putExtra("unix", unix);
-            broadcast.putExtra("alarm_state", alarm_state);
-            sendBroadcast(broadcast);
-            Log.d("TIME", "Unix: " + unix);
-        });
-
-
-        //get location
-        Button location_button = findViewById(R.id.location_button);
-        location_button.setOnClickListener(view -> get_location());
-
-        //get alarm_state
-        androidx.appcompat.widget.SwitchCompat on_off =  findViewById(R.id.switch1);
-        on_off.setOnClickListener(view -> {
-             Intent broadcast = new Intent(MainActivity.this, AlarmBroadcastReceiver.class);
-            if (on_off.isChecked()) {
-                Toast.makeText(MainActivity.this, "Alarm is enabled for " + alarm_hour + ":" + alarm_minute, Toast.LENGTH_LONG).show();
-                alarm_state = true;
-                broadcast.putExtra("alarm_state", alarm_state);
-                broadcast.putExtra("unix", unix);
-            } else {
-                Toast.makeText(MainActivity.this, "Alarm cancelled for " + alarm_hour + ":" + alarm_minute, Toast.LENGTH_LONG).show();
-                alarm_state = false;
-                broadcast.putExtra("alarm_state", alarm_state);
-                broadcast.putExtra("unix", unix);
-            }
-            sendBroadcast(broadcast);
-        });
-
-        //check for location
-        FusedLocationProviderClient fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-        fusedLocationClient.getLastLocation()
-                .addOnSuccessListener(this, new OnSuccessListener<Location>() {
-                    @Override
-                    public void onSuccess(Location location) {
-                        // Got last known location. In some rare situations this can be null.
-                        if (location != null) {
-                            // Logic to handle location object
-                            longe = location.getLongitude();
-                            lat = location.getLatitude();
-                            Log.d("LOCATION", "Location:" + lat + ":" + longe);
+            //check for location
+            FusedLocationProviderClient fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+            fusedLocationClient.getLastLocation()
+                    .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                        @Override
+                        public void onSuccess(Location location) {
+                            // Got last known location. In some rare situations this can be null.
+                            if (location != null) {
+                                // Logic to handle location object
+                                longe = location.getLongitude();
+                                lat = location.getLatitude();
+                                Log.d("LOCATION", "Location:" + lat + ":" + longe);
+                            } else {
+                                Log.d("LOCATION", "Location is null");
+                                Toast.makeText(getApplicationContext(), "No location found now, open Maps to ensure location services are enabled", Toast.LENGTH_LONG).show();
+                            }
                         }
-                        else {
-                            Log.d("LOCATION", "Location is null");
-                            Toast.makeText(getApplicationContext(), "No location found now, open Maps to ensure location services are enabled", Toast.LENGTH_LONG).show();
-                        }
-                    }
-                });
+                    });
 
-        Button button = findViewById(R.id.test_alarm);
-        button.setOnClickListener(v -> {
-            Intent intent1 = new Intent(MainActivity.this, AlarmService.class);
-            startService(intent1);
-        });
-    }
-
-    public void get_location() {
-        FusedLocationProviderClient fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+            Button button = findViewById(R.id.test_alarm);
+            button.setOnClickListener(v -> {
+                Intent intent1 = new Intent(MainActivity.this, AlarmService.class);
+                startService(intent1);
+            });
         }
-        fusedLocationClient.getLastLocation()
-                .addOnSuccessListener(this, new OnSuccessListener<Location>() {
-                    @Override
-                    public void onSuccess(Location location) {
-                        // Got last known location. In some rare situations this can be null.
-                        if (location != null) {
-                            // Logic to handle location object
-                            Log.d("LOCATION", "Location:" + location);
 
-                            //generate a sunset
-                            String longitude = location.getLongitude() + "";
-                            String lattitude = location.getLatitude() + "";
-                            com.luckycatlabs.sunrisesunset.dto.Location sunrise_location = new com.luckycatlabs.sunrisesunset.dto.Location(lattitude, longitude);
-                            TimeZone timezone = TimeZone.getDefault();
-                            SunriseSunsetCalculator calculator = new SunriseSunsetCalculator(sunrise_location, timezone);
 
-                            //try to set tomorrow's date
-                            Date dt = new Date();
-                            Calendar c = Calendar.getInstance(timezone);
-                            c.setTime(dt);
-                            c.add(Calendar.DATE, 1);
-                            dt = c.getTime();
-                            c.setTime(dt);
-                            String officialSunrise = calculator.getOfficialSunriseForDate(c);
-                            Log.d("CALENDAR", c.getTime() + "");
-                            Log.d("LOCATION",timezone + ":" + officialSunrise);
-
-                            //Display Ui
-                            TextView sunrise_time = findViewById(R.id.sunrise_time);
-                            sunrise_time.setText(officialSunrise);
-                            TextView timezone_display = findViewById(R.id.time_zone);
-                            timezone_display.setText(timezone.getDisplayName());
-
-                            //Set the global variables correctly
-                            string_to_time(officialSunrise);
-                            long alarm_mili =  time_to_mili(hour, minute);
-                            unix = time_to_mili(hour, minute) + System.currentTimeMillis();
-                            Log.d("TIME", hour + ":" + minute + ", " + alarm_mili);
-
-                        }
-                        else {
-                            Log.d("LOCATION", "Location is null");
-
-                        }
-                    }
-                });
-    }
     protected void onRestart() {
         super.onRestart();
 
@@ -297,7 +265,9 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public void get_numberpicker() {
+
+
+    private void get_numberpicker() {
         NumberPicker before_picker = findViewById(R.id.before_selector);
         if (before_picker.getValue()!=0) {
             alarm_minute -= before_picker.getValue();
@@ -316,4 +286,58 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
-}
+
+
+    private void get_location() {
+        FusedLocationProviderClient fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+        }
+        fusedLocationClient.getLastLocation()
+                .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                    @Override
+                    public void onSuccess(Location location) {
+                        // Got last known location. In some rare situations this can be null.
+                        if (location != null) {
+                            // Logic to handle location object
+                            Log.d("LOCATION", "Location:" + location);
+
+                            //generate a sunset
+                            String longitude = location.getLongitude() + "";
+                            String lattitude = location.getLatitude() + "";
+                            com.luckycatlabs.sunrisesunset.dto.Location sunrise_location = new com.luckycatlabs.sunrisesunset.dto.Location(lattitude, longitude);
+                            TimeZone timezone = TimeZone.getDefault();
+                            SunriseSunsetCalculator calculator = new SunriseSunsetCalculator(sunrise_location, timezone);
+
+                            //try to set tomorrow's date
+                            Date dt = new Date();
+                            Calendar c = Calendar.getInstance(timezone);
+                            c.setTime(dt);
+                            c.add(Calendar.DATE, 1);
+                            dt = c.getTime();
+                            c.setTime(dt);
+                            String officialSunrise = calculator.getOfficialSunriseForDate(c);
+                            Log.d("CALENDAR", c.getTime() + "");
+                            Log.d("LOCATION",timezone + ":" + officialSunrise);
+
+                            //Display Ui
+                            TextView sunrise_time = findViewById(R.id.sunrise_time);
+                            sunrise_time.setText(officialSunrise);
+                            TextView timezone_display = findViewById(R.id.time_zone);
+                            timezone_display.setText(timezone.getDisplayName());
+
+                            //Set the global variables correctly
+                            string_to_time(officialSunrise);
+                            long alarm_mili =  time_to_mili(hour, minute);
+                            unix = time_to_mili(hour, minute) + System.currentTimeMillis();
+                            Log.d("TIME", hour + ":" + minute + ", " + alarm_mili);
+
+                        }
+                        else {
+                            Log.d("LOCATION", "Location is null");
+
+                        }
+                    }
+                });
+    }
+    }
